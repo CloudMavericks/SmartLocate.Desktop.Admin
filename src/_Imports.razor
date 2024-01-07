@@ -1,0 +1,18 @@
+@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using MudBlazor
+@using SmartLocate.Desktop.Admin.Services
+
+@inject NavigationManager NavigationManager
+@inject AppThemeService AppThemeService
+@inject VelocityAuthenticationStateProvider AuthenticationStateProvider
+@inject HttpClient HttpClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject LocalStorageService LocalStorageService

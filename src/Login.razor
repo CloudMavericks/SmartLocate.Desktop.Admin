@@ -1,0 +1,75 @@
+@using SmartLocate.Desktop.Admin.Models.Identity
+@using System.Net.Http.Headers
+<MudThemeProvider @bind-IsDarkMode="@AppThemeService.IsDarkMode" />
+<MudDialogProvider />
+<MudSnackbarProvider />
+<MudContainer Class="d-flex justify-center align-center" Style="height: 100vh;">
+    <MudPaper Outlined Style="width: 500px;">
+        <EditForm Model="@_requestModel" OnValidSubmit="@SubmitAsync">
+            <DataAnnotationsValidator />
+            <div class="d-flex justify-center pa-4">
+                <MudImage Src="SmartLocate.png" Class="rounded" Height="100" ObjectPosition="ObjectPosition.Center" ObjectFit="ObjectFit.Contain" />
+            </div>
+            <MudDivider DividerType="DividerType.FullWidth" />
+            <MudGrid Spacing="1" Class="pa-4">
+                <MudItem xs="12">
+                    <MudTextField Margin="Margin.Dense" Label="Email" Variant="Variant.Outlined" @bind-Value="@_requestModel.Email" For="@(() => _requestModel.Email)" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField Margin="Margin.Dense" Label="Password" Variant="Variant.Outlined" @bind-Value="@_requestModel.Password" For="@(() => _requestModel.Password)" 
+                                  InputType="@_passwordInput" Adornment="Adornment.End" AdornmentIcon="@_passwordInputIcon" OnAdornmentClick="@TogglePasswordVisibility" />
+                </MudItem>
+                <MudItem xs="12" Class="d-flex justify-center">
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" Style="width: 100%;">Sign In</MudButton>
+                </MudItem>
+            </MudGrid>
+        </EditForm>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private readonly LoginRequest _requestModel = new();
+
+    private async Task SubmitAsync()
+    {
+        try
+        {
+            var response = await HttpClient.PostAsJsonAsync("identity/admin-users/login", _requestModel);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
+                LocalStorageService.SetItem("token", result.Token);
+                HttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", result.Token);
+                App.ChangeMainWindowAs<MainWindow>();
+            }
+            else
+            {
+                Snackbar.Add("Invalid username or password", Severity.Error);
+            }
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+    }
+
+    private bool _passwordVisibility;
+    private InputType _passwordInput = InputType.Password;
+    private string _passwordInputIcon = Icons.Material.Filled.VisibilityOff;
+
+    private void TogglePasswordVisibility()
+    {
+        if (_passwordVisibility)
+        {
+            _passwordVisibility = false;
+            _passwordInputIcon = Icons.Material.Filled.VisibilityOff;
+            _passwordInput = InputType.Password;
+        }
+        else
+        {
+            _passwordVisibility = true;
+            _passwordInputIcon = Icons.Material.Filled.Visibility;
+            _passwordInput = InputType.Text;
+        }
+    }
+}
