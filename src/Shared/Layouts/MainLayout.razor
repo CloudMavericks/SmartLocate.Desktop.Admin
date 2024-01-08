@@ -1,0 +1,77 @@
+﻿@inherits LayoutComponentBase
+
+<AuthorizeView>
+    <MudLayout>
+        <MudAppBar Dense>
+            <MudHidden Breakpoint="Breakpoint.MdAndUp">
+                <MudIconButton Edge="Edge.Start" DisableRipple OnClick="@(() => IsOpen = !IsOpen)" Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit"/>
+                <MudIconButton Class="mt-n1" Color="Color.Inherit" Icon="@Icons.Custom.Brands.Microsoft"/>
+            </MudHidden>
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                <MudIconButton Edge="Edge.Start" Class="mt-n1" Color="Color.Inherit" Icon="@Icons.Custom.Brands.Microsoft"/>
+            </MudHidden>
+            <MudText Typo="Typo.h6" Class="mt-n1 me-2">Smart Locate</MudText>
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                <MudButton Href="/" Class="ms-2 me-1" Color="Color.Inherit" Variant="Variant.Text">Home</MudButton>
+                <MudMenu Dense AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                    <ActivatorContent>
+                        <MudButton Class="mx-1" Color="Color.Inherit" Variant="Variant.Text" EndIcon="@Icons.Material.Filled.KeyboardArrowDown">
+                            Catalog
+                        </MudButton>
+                    </ActivatorContent>
+                    <ChildContent>
+                        <MudMenuItem Href="/Buses">Bus</MudMenuItem>
+                        <MudMenuItem Href="/BusRoutes">Bus Routes</MudMenuItem>
+                    </ChildContent>
+                </MudMenu>
+                <MudMenu Dense AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                    <ActivatorContent>
+                        <MudButton Class="mx-1" Color="Color.Inherit" Variant="Variant.Text" EndIcon="@Icons.Material.Filled.KeyboardArrowDown">
+                            Users
+                        </MudButton>
+                    </ActivatorContent>
+                    <ChildContent>
+                        <MudMenuItem Href="/AdminUsers">Admin Users</MudMenuItem>
+                        <MudMenuItem Href="/BusDrivers">Bus Drivers</MudMenuItem>
+                        <MudMenuItem Href="/Students">Students</MudMenuItem>
+                    </ChildContent>
+                </MudMenu>
+            </MudHidden>
+            <MudSpacer />
+            <MudTooltip Text="Toggle light/dark theme">
+                <MudToggleIconButton @bind-Toggled="@AppThemeService.IsDarkMode" ToggledIcon="@Icons.Material.Filled.LightMode" Icon="@Icons.Material.Filled.DarkMode" Color="Color.Inherit"/>
+            </MudTooltip>
+            <MudIconButton Color="Color.Inherit" Icon="@Icons.Material.Filled.Help" Edge="Edge.End" />
+        </MudAppBar>
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <MudDrawer @bind-Open="IsOpen" Variant="DrawerVariant.Responsive">
+                <MudDrawerHeader>
+                    <MudImage Src="SmartLocate.png" Class="rounded" Width="200" ObjectPosition="ObjectPosition.Center" ObjectFit="ObjectFit.Contain" />
+                </MudDrawerHeader>
+                <MudDrawerContainer>
+                    <MudList Clickable Dense>
+                        <MudListItem Class="mt-n4" Href="/">Home</MudListItem>
+                        <MudListItem Href="/Buses">Buses</MudListItem>
+                        <MudListItem Href="/BusRoutes">Bus Routes</MudListItem>
+                        <MudListItem Href="/BusDrivers">Bus Drivers</MudListItem>
+                        <MudListItem Href="/AdminUsers">Admin Users</MudListItem>
+                        <MudListItem Href="/Students">Students</MudListItem>
+                        <MudDivider />
+                        <MudListItem Dense="true" Icon="@Icons.Material.Filled.Help">About Us</MudListItem>
+                    </MudList>
+                </MudDrawerContainer>
+            </MudDrawer>
+        </MudHidden>
+        <MudMainContent>
+            <MudContainer MaxWidth="MaxWidth.False" Class="mt-5">
+                @Body
+            </MudContainer>
+        </MudMainContent>
+    </MudLayout>
+</AuthorizeView>
+
+@code{
+
+    private bool IsOpen { get; set; }
+
+}

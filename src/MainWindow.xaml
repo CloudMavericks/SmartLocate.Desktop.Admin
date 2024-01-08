@@ -4,9 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:SmartLocate.Desktop.Admin"
-        mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
-
-    </Grid>
+        mc:Ignorable="d" WindowStartupLocation="CenterScreen" WindowState="Maximized"
+        Title="SmartLocate - Administration" Height="450" Width="800"
+        Closing="MainWindow_OnClosing">
 </Window>
