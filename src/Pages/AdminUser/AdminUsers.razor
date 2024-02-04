@@ -1,0 +1,191 @@
+﻿@page "/AdminUsers"
+@inject AdminUserHttpClient AdminUserHttpClient
+@using SmartLocate.Desktop.Admin.Services.HttpClients
+@using SmartLocate.Desktop.Admin.Models.AdminUsers
+@using System.Net
+
+<MudStack AlignItems="AlignItems.Center" Spacing="0">
+    <MudText Typo="Typo.h5" Color="Color.Primary">Admin Users</MudText>
+    <MudText Typo="Typo.body2">Manage all administrative users in the college</MudText>
+</MudStack>
+
+<MudPaper Outlined Class="my-4">
+    <MudStack Row Class="px-3 py-2" AlignItems="AlignItems.Center">
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <MudTooltip Text="New Admin User">
+                <MudIconButton Variant="Variant.Filled" Color="Color.Primary" Icon="@Icons.Material.Filled.Add"
+                               OnClick="@CreateNewAdminUserAsync"/>
+            </MudTooltip>
+            <MudTooltip Text="Reload">
+                <MudIconButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(() => OnSearch(_searchQuery))"
+                               Icon="@Icons.Material.Filled.Refresh"/>
+            </MudTooltip>
+            <MudTextField T="@string" ValueChanged="@(OnSearch)" DebounceInterval="300" Placeholder="Search for Admin Users"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Small"
+                          Variant="Variant.Outlined" Margin="Margin.Dense"/>
+        </MudHidden>
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudStack AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                           IconColor="Color.Surface" OnClick="@CreateNewAdminUserAsync">New Admin User</MudButton>
+            </MudStack>
+            <MudStack AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(() => OnSearch(_searchQuery))"
+                           StartIcon="@Icons.Material.Filled.Refresh" IconColor="Color.Surface">Reload</MudButton>
+            </MudStack>
+            <MudStack AlignItems="AlignItems.Center" Class="flex-grow-1"></MudStack>
+            <MudStack AlignItems="AlignItems.Center" Class="flex-grow-1 ms-auto me-0">
+                <MudTextField T="@string" ValueChanged="@(OnSearch)" DebounceInterval="300" Placeholder="Search for Admin Users"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" FullWidth/>
+            </MudStack>
+        </MudHidden>
+    </MudStack>
+    <MudDivider DividerType="DividerType.FullWidth"/>
+    <MudTable Dense Hover Breakpoint="Breakpoint.None" HorizontalScrollbar LoadingProgressColor="Color.Secondary" Elevation="0"
+              @ref="@_mudTable" ServerData="@OnServerReloadAsync" OnRowClick="@OnRowClick" T="AdminUserResponse" Style="white-space: nowrap">
+        <NoRecordsContent>
+            <MudAlert Class="my-n3" Severity="Severity.Normal">No admin users found.</MudAlert>
+        </NoRecordsContent>
+        <LoadingContent>
+            <MudText Typo="Typo.body1" Align="Align.Center" GutterBottom="true">Loading...</MudText>
+        </LoadingContent>
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Email</MudTh>
+            <MudTh>Phone Number</MudTh>
+            <MudTh>Super Admin</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="adminUser">
+            <MudTd DataLabel="Name"><MudHighlighter HighlightedText="@_searchQuery" Text="@adminUser.Name"/></MudTd>
+            <MudTd DataLabel="Email"><MudHighlighter HighlightedText="@_searchQuery" Text="@adminUser.Email"/></MudTd>
+            <MudTd DataLabel="Phone Number"><MudHighlighter HighlightedText="@_searchQuery" Text="@adminUser.PhoneNumber"/></MudTd>
+            <MudTd DataLabel="Super Admin">
+                @if (adminUser.IsSuperAdmin)
+                {
+                    <MudChip Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Text="Yes" 
+                             Icon="@Icons.Material.Filled.Check"/>
+                }
+                else
+                {
+                    <MudChip Size="Size.Small" Variant="Variant.Filled" Color="Color.Default" Text="No" 
+                             Icon="@Icons.Material.Filled.Close"/>
+                }
+            </MudTd>
+            <MudTd>
+                <MudStack Row>
+                    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Edit" Color="Color.Warning"
+                               Size="Size.Small" OnClick="@(() => EditAsync(adminUser))">Edit</MudButton>
+                    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Delete" Color="Color.Error"
+                               Size="Size.Small" OnClick="@(() => DeleteAsync(adminUser))">Delete</MudButton>
+                </MudStack>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager/>
+        </PagerContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    
+    private IList<AdminUserResponse> _suppliers = new List<AdminUserResponse>();
+    private MudTable<AdminUserResponse> _mudTable;
+    private long _totalItems;
+    private string _searchQuery = string.Empty;
+
+    private async Task<TableData<AdminUserResponse>> OnServerReloadAsync(TableState tableState)
+    {
+        if (!string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            tableState.Page = 0;
+        }
+        await LoadDataAsync(tableState.Page, tableState.PageSize);
+        return new TableData<AdminUserResponse> { TotalItems = (int)_totalItems, Items = _suppliers };
+    }
+
+    private async Task LoadDataAsync(int page, int pageSize)
+    {
+        try
+        {
+            var response = await AdminUserHttpClient.GetAsync(page + 1, pageSize, _searchQuery);
+            _totalItems = response.TotalCount;
+            _suppliers = response.Items;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Something went wrong. Please try again." + ex.Message, Severity.Error); 
+        }
+    }
+
+    private Task OnSearch(string text)
+    {
+        _searchQuery = text;
+        return _mudTable.ReloadServerData();
+    }
+    
+    private async Task CreateNewAdminUserAsync()
+    {
+        var dialogOptions = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, DisableBackdropClick = true };
+        var dialog = await DialogService.ShowAsync<AddAdminUserDialog>("Add Admin User", dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await _mudTable.ReloadServerData();
+        }
+    }
+    
+    private Task OnRowClick(TableRowClickEventArgs<AdminUserResponse> args)
+    {
+        return EditAsync(args.Item);
+    }
+    
+    private async Task EditAsync(AdminUserResponse supplierResponse)
+    {
+        var dialogOptions = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, DisableBackdropClick = true };
+        var parameters = new DialogParameters {
+        {
+            nameof(EditAdminUserDialog.Model), new UpdateAdminUserRequest()
+            {
+                Id = supplierResponse.Id,
+                Name = supplierResponse.Name,
+                Email = supplierResponse.Email,
+                PhoneNumber = supplierResponse.PhoneNumber,
+                IsSuperAdmin = supplierResponse.IsSuperAdmin
+            }
+        } };
+        var dialog = await DialogService.ShowAsync<EditAdminUserDialog>("Edit Admin User", parameters, dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await _mudTable.ReloadServerData();
+        }
+    }
+    
+    private async Task DeleteAsync(AdminUserResponse adminUser)
+    {
+        if (adminUser.IsSuperAdmin)
+        {
+            Snackbar.Add("You can't delete super admin user.", Severity.Error);
+            return;
+        }
+        if(await DialogService.ShowDeleteDialog("Delete Admin User", "Are you sure you want to delete this Admin User?", yesText: "Delete", cancelText: "Cancel"))
+        {
+            try
+            {
+                await AdminUserHttpClient.DeleteAsync(adminUser.Id);
+                Snackbar.Add("Admin User deleted successfully.", Severity.Success);
+                await _mudTable.ReloadServerData();
+            }
+            catch (HttpRequestException e)
+            {
+                Snackbar.Add(e.StatusCode == HttpStatusCode.NotFound ? "Admin User not found." : "Something went wrong. Please try again.", Severity.Error);
+            }
+            catch (Exception)
+            {
+                Snackbar.Add("Something went wrong. Please try again.", Severity.Error);
+            }
+        }
+    }
+}

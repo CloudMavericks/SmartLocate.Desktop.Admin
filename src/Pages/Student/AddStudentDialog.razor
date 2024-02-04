@@ -1,0 +1,58 @@
+﻿@using SmartLocate.Desktop.Admin.Services.HttpClients
+@using SmartLocate.Desktop.Admin.Models.Students
+@inject StudentHttpClient StudentHttpClient
+
+<EditForm Model="Model" OnValidSubmit="SubmitAsync">
+    <DataAnnotationsValidator />
+    <MudDialog>
+        <TitleContent>
+            <MudText Typo="Typo.h6"><MudIcon Icon="@Icons.Material.Filled.Add" Class="me-3 mb-n1 ms-n1"/>New Student</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudGrid Spacing="1" Class="my-n2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Name" 
+                                  @bind-Value="@Model.Name" For="@(() => Model.Name)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Email" 
+                                  @bind-Value="@Model.Email" For="@(() => Model.Email)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Phone Number" 
+                                  @bind-Value="@Model.PhoneNumber" For="@(() => Model.PhoneNumber)" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Address" 
+                                  @bind-Value="@Model.Address" For="@(() => Model.Address)" />
+                </MudItem>
+            </MudGrid>
+        </DialogContent>
+        <DialogActions>
+            <MudButton Variant="Variant.Filled" DisableElevation StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" ButtonType="ButtonType.Submit">Create</MudButton>
+            <MudButton Variant="Variant.Filled" DisableElevation OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        </DialogActions>
+    </MudDialog>
+</EditForm>
+
+@code {
+    private CreateStudentRequest Model { get; } = new();
+    
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; }
+    
+    private async Task SubmitAsync()
+    {
+        try
+        {
+            await StudentHttpClient.CreateAsync(Model);
+            Snackbar.Add("Student created successfully.", Severity.Success);
+            MudDialog.Close();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Something went wrong. Please try again.", Severity.Error);
+        }
+    }
+    
+}

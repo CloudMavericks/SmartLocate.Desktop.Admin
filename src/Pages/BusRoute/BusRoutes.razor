@@ -1,0 +1,138 @@
+﻿@page "/BusRoutes"
+@inject BusRouteHttpClient BusRouteHttpClient
+@using SmartLocate.Desktop.Admin.Services.HttpClients
+@using SmartLocate.Desktop.Admin.Models.BusRoutes
+@using System.Net
+
+<MudStack AlignItems="AlignItems.Center" Spacing="0">
+    <MudText Typo="Typo.h5" Color="Color.Primary">Bus Routes</MudText>
+    <MudText Typo="Typo.body2">Manage all bus routes from college to various locations around Chennai.</MudText>
+</MudStack>
+<MudPaper Outlined Class="my-4">
+    <MudStack Row Class="px-3 py-2" AlignItems="AlignItems.Center">
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <MudTooltip Text="New Bus Route">
+                <MudIconButton Variant="Variant.Filled" Color="Color.Primary" Icon="@Icons.Material.Filled.Add"
+                               Href="/BusRoutes/Add"/>
+            </MudTooltip>
+            <MudTooltip Text="Reload">
+                <MudIconButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(() => OnSearch(_searchQuery))"
+                               Icon="@Icons.Material.Filled.Refresh"/>
+            </MudTooltip>
+            <MudTextField T="@string" ValueChanged="@(OnSearch)" DebounceInterval="300" Placeholder="Search for Bus Routes"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Small"
+                          Variant="Variant.Outlined" Margin="Margin.Dense"/>
+        </MudHidden>
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudStack AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                           IconColor="Color.Surface" Href="/BusRoutes/Add">New Bus Route</MudButton>
+            </MudStack>
+            <MudStack AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(() => OnSearch(_searchQuery))"
+                           StartIcon="@Icons.Material.Filled.Refresh" IconColor="Color.Surface">Reload</MudButton>
+            </MudStack>
+            <MudStack AlignItems="AlignItems.Center" Class="flex-grow-1"></MudStack>
+            <MudStack AlignItems="AlignItems.Center" Class="flex-grow-1 ms-auto me-0">
+                <MudTextField T="@string" ValueChanged="@(OnSearch)" DebounceInterval="300" Placeholder="Search for Bus Routes"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" FullWidth/>
+            </MudStack>
+        </MudHidden>
+    </MudStack>
+    <MudDivider DividerType="DividerType.FullWidth"/>
+    <MudTable Dense Hover Breakpoint="Breakpoint.None" HorizontalScrollbar LoadingProgressColor="Color.Secondary" Elevation="0"
+              @ref="@_mudTable" ServerData="@OnServerReloadAsync" OnRowClick="@OnRowClick" T="BusRouteResponse" Style="white-space: nowrap">
+        <NoRecordsContent>
+            <MudAlert Class="my-n3" Severity="Severity.Normal">No bus drivers found.</MudAlert>
+        </NoRecordsContent>
+        <LoadingContent>
+            <MudText Typo="Typo.body1" Align="Align.Center" GutterBottom="true">Loading...</MudText>
+        </LoadingContent>
+        <HeaderContent>
+            <MudTh>Route Number</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="busRoute">
+            <MudTd DataLabel="Route Number"><MudHighlighter HighlightedText="@_searchQuery" Text="@busRoute.RouteNumber.ToString()"/></MudTd>
+            <MudTd>
+                <MudStack Row>
+                    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Edit" Color="Color.Warning"
+                               Size="Size.Small" OnClick="@(() => EditAsync(busRoute))">Edit</MudButton>
+                    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Delete" Color="Color.Error"
+                               Size="Size.Small" OnClick="@(() => DeleteAsync(busRoute))">Delete</MudButton>
+                </MudStack>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager/>
+        </PagerContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    
+    private IList<BusRouteResponse> _list = new List<BusRouteResponse>();
+    private MudTable<BusRouteResponse> _mudTable;
+    private long _totalItems;
+    private string _searchQuery = string.Empty;
+
+    private async Task<TableData<BusRouteResponse>> OnServerReloadAsync(TableState tableState)
+    {
+        if (!string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            tableState.Page = 0;
+        }
+        await LoadDataAsync(tableState.Page, tableState.PageSize);
+        return new TableData<BusRouteResponse> { TotalItems = (int)_totalItems, Items = _list };
+    }
+
+    private async Task LoadDataAsync(int page, int pageSize)
+    {
+        try
+        {
+            var resultSet = await BusRouteHttpClient.GetAsync(page + 1, pageSize, _searchQuery);
+            _totalItems = resultSet.TotalCount;
+            _list = resultSet.Items;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Something went wrong. Please try again." + ex.Message, Severity.Error); 
+        }
+    }
+
+    private Task OnSearch(string text)
+    {
+        _searchQuery = text;
+        return _mudTable.ReloadServerData();
+    }
+    
+    private void OnRowClick(TableRowClickEventArgs<BusRouteResponse> args) => EditAsync(args.Item);
+    
+    private void EditAsync(BusRouteResponse supplierResponse)
+    {
+        NavigationManager.NavigateTo($"/BusRoutes/{supplierResponse.Id}/Edit");
+    }
+    
+    private async Task DeleteAsync(BusRouteResponse adminUser)
+    {
+        if(await DialogService.ShowDeleteDialog("Delete Bus Route", "Are you sure you want to delete this Bus Route?", yesText: "Delete", cancelText: "Cancel"))
+        {
+            try
+            {
+                await BusRouteHttpClient.DeleteAsync(adminUser.Id);
+                Snackbar.Add("Bus Route deleted successfully.", Severity.Success);
+                await _mudTable.ReloadServerData();
+            }
+            catch (HttpRequestException e)
+            {
+                Snackbar.Add(e.StatusCode == HttpStatusCode.NotFound ? "Bus Route not found." : "Something went wrong. Please try again.", Severity.Error);
+            }
+            catch (Exception)
+            {
+                Snackbar.Add("Something went wrong. Please try again.", Severity.Error);
+            }
+        }
+    }
+    
+}

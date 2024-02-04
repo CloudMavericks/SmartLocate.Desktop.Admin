@@ -1,0 +1,173 @@
+﻿@page "/Buses"
+@inject BusHttpClient BusHttpClient
+@using SmartLocate.Desktop.Admin.Models.Buses
+@using SmartLocate.Desktop.Admin.Services.HttpClients
+@using System.Net
+
+<MudStack AlignItems="AlignItems.Center" Spacing="0">
+    <MudText Typo="Typo.h5" Color="Color.Primary">Buses</MudText>
+    <MudText Typo="Typo.body2">Manage all buses in the college</MudText>
+</MudStack>
+
+<MudPaper Outlined Class="my-4">
+    <MudStack Row Class="px-3 py-2" AlignItems="AlignItems.Center">
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <MudTooltip Text="New Bus">
+                <MudIconButton Variant="Variant.Filled" Color="Color.Primary" Icon="@Icons.Material.Filled.Add"
+                               OnClick="@CreateNewBusAsync"/>
+            </MudTooltip>
+            <MudTooltip Text="Reload">
+                <MudIconButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(() => OnSearch(_searchQuery))"
+                               Icon="@Icons.Material.Filled.Refresh"/>
+            </MudTooltip>
+            <MudTextField T="@string" ValueChanged="@(OnSearch)" DebounceInterval="300" Placeholder="Search for Buses"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Small"
+                          Variant="Variant.Outlined" Margin="Margin.Dense"/>
+        </MudHidden>
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudStack AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                           IconColor="Color.Surface" OnClick="@CreateNewBusAsync">New Bus</MudButton>
+            </MudStack>
+            <MudStack AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(() => OnSearch(_searchQuery))"
+                           StartIcon="@Icons.Material.Filled.Refresh" IconColor="Color.Surface">Reload</MudButton>
+            </MudStack>
+            <MudStack AlignItems="AlignItems.Center" Class="flex-grow-1"></MudStack>
+            <MudStack AlignItems="AlignItems.Center" Class="flex-grow-1 ms-auto me-0">
+                <MudTextField T="@string" ValueChanged="@(OnSearch)" DebounceInterval="300" Placeholder="Search for Buses"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" FullWidth/>
+            </MudStack>
+        </MudHidden>
+    </MudStack>
+    <MudDivider DividerType="DividerType.FullWidth"/>
+    <MudTable Dense Hover Breakpoint="Breakpoint.None" HorizontalScrollbar LoadingProgressColor="Color.Secondary" Elevation="0"
+              @ref="@_mudTable" ServerData="@OnServerReloadAsync" OnRowClick="@OnRowClick" T="BusResponse" Style="white-space: nowrap">
+        <NoRecordsContent>
+            <MudAlert Class="my-n3" Severity="Severity.Normal">No buses found.</MudAlert>
+        </NoRecordsContent>
+        <LoadingContent>
+            <MudText Typo="Typo.body1" Align="Align.Center" GutterBottom="true">Loading...</MudText>
+        </LoadingContent>
+        <HeaderContent>
+            <MudTh>Vehicle Model</MudTh>
+            <MudTh>Vehicle Number</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="bus">
+            <MudTd DataLabel="Vehicle Model"><MudHighlighter HighlightedText="@_searchQuery" Text="@bus.VehicleModel"/></MudTd>
+            <MudTd DataLabel="Vehicle Number"><MudHighlighter HighlightedText="@_searchQuery" Text="@bus.VehicleNumber"/></MudTd>
+            <MudTd DataLabel="Status">
+                <MudChip Color="Color.Primary" Size="Size.Small" Text="@bus.Status.ToDescriptionString()" />
+            </MudTd>
+            <MudTd>
+                <MudStack Row>
+                    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Edit" Color="Color.Warning"
+                               Size="Size.Small" OnClick="@(() => EditAsync(bus))">Edit</MudButton>
+                    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Delete" Color="Color.Error"
+                               Size="Size.Small" OnClick="@(() => DeleteAsync(bus.Id))">Delete</MudButton>
+                </MudStack>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager/>
+        </PagerContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    private IList<BusResponse> _suppliers = new List<BusResponse>();
+    private MudTable<BusResponse> _mudTable;
+    private long _totalItems;
+    private string _searchQuery = string.Empty;
+
+    private async Task<TableData<BusResponse>> OnServerReloadAsync(TableState tableState)
+    {
+        if (!string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            tableState.Page = 0;
+        }
+        await LoadDataAsync(tableState.Page, tableState.PageSize);
+        return new TableData<BusResponse> { TotalItems = (int)_totalItems, Items = _suppliers };
+    }
+
+    private async Task LoadDataAsync(int page, int pageSize)
+    {
+        try
+        {
+            var response = await BusHttpClient.GetAsync(page + 1, pageSize, _searchQuery);
+            _totalItems = response.TotalCount;
+            _suppliers = response.Items;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Something went wrong. Please try again." + ex.Message, Severity.Error); 
+        }
+    }
+
+    private Task OnSearch(string text)
+    {
+        _searchQuery = text;
+        return _mudTable.ReloadServerData();
+    }
+    
+    private async Task CreateNewBusAsync()
+    {
+        var dialogOptions = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, DisableBackdropClick = true };
+        var dialog = await DialogService.ShowAsync<AddBusDialog>("Add Bus", dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await _mudTable.ReloadServerData();
+        }
+    }
+    
+    private Task OnRowClick(TableRowClickEventArgs<BusResponse> args)
+    {
+        return EditAsync(args.Item);
+    }
+    
+    private async Task EditAsync(BusResponse supplierResponse)
+    {
+        var dialogOptions = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, DisableBackdropClick = true };
+        var parameters = new DialogParameters {
+        {
+            nameof(EditBusDialog.Model), new UpdateBusRequest()
+            {
+                Id = supplierResponse.Id,
+                VehicleModel = supplierResponse.VehicleModel,
+                VehicleNumber = supplierResponse.VehicleNumber,
+                Status = supplierResponse.Status
+            }
+        } };
+        var dialog = await DialogService.ShowAsync<EditBusDialog>("Edit Bus", parameters, dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await _mudTable.ReloadServerData();
+        }
+    }
+    
+    private async Task DeleteAsync(Guid id)
+    {
+        if(await DialogService.ShowDeleteDialog("Delete Bus", "Are you sure you want to delete this Bus?", yesText: "Delete", cancelText: "Cancel"))
+        {
+            try
+            {
+                await BusHttpClient.DeleteAsync(id);
+                Snackbar.Add("Bus deleted successfully.", Severity.Success);
+                await _mudTable.ReloadServerData();
+            }
+            catch (HttpRequestException e)
+            {
+                Snackbar.Add(e.StatusCode == HttpStatusCode.NotFound ? "Bus not found." : "Something went wrong. Please try again.", Severity.Error);
+            }
+            catch (Exception)
+            {
+                Snackbar.Add("Something went wrong. Please try again.", Severity.Error);
+            }
+        }
+    }
+}

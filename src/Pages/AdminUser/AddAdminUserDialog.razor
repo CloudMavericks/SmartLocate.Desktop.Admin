@@ -1,0 +1,95 @@
+﻿@inject AdminUserHttpClient AdminUserHttpClient
+@using SmartLocate.Desktop.Admin.Models.AdminUsers
+@using SmartLocate.Desktop.Admin.Services.HttpClients
+
+<EditForm Model="Model" OnValidSubmit="SubmitAsync">
+    <DataAnnotationsValidator />
+    <MudDialog>
+        <TitleContent>
+            <MudText Typo="Typo.h6"><MudIcon Icon="@Icons.Material.Filled.Add" Class="me-3 mb-n1 ms-n1"/>New Admin User</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudGrid Spacing="1" Class="my-n2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Name" 
+                                  @bind-Value="@Model.Name" For="@(() => Model.Name)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Email" 
+                                  @bind-Value="@Model.Email" For="@(() => Model.Email)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Phone Number" 
+                                  @bind-Value="@Model.PhoneNumber" For="@(() => Model.PhoneNumber)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudCheckBox T="bool" @bind-Checked="@Model.IsSuperAdmin" Label="Enable Super-Admin privileges" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Password" 
+                                  @bind-Value="@Model.Password" For="@(() => Model.Password)"
+                                  InputType="@_passwordInput" Adornment="Adornment.End" 
+                                  AdornmentIcon="@_passwordInputIcon" OnAdornmentClick="TogglePasswordVisibility"/>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Confirm Password" 
+                                  @bind-Value="@ConfirmPassword" For="@(() => ConfirmPassword)"
+                                  InputType="@_passwordInput" Adornment="Adornment.End" 
+                                  AdornmentIcon="@_passwordInputIcon" OnAdornmentClick="TogglePasswordVisibility"/>
+                </MudItem>
+            </MudGrid>
+        </DialogContent>
+        <DialogActions>
+            <MudButton Variant="Variant.Filled" DisableElevation StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" ButtonType="ButtonType.Submit">Create</MudButton>
+            <MudButton Variant="Variant.Filled" DisableElevation OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        </DialogActions>
+    </MudDialog>
+</EditForm>
+
+@code {
+    private CreateAdminUserRequest Model { get; } = new();
+    
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; }
+    
+    private string ConfirmPassword { get; set; }
+    
+    private bool _passwordVisibility;
+    private InputType _passwordInput = InputType.Password;
+    private string _passwordInputIcon = Icons.Material.Filled.VisibilityOff;
+
+    private void TogglePasswordVisibility()
+    {
+        if (_passwordVisibility)
+        {
+            _passwordVisibility = false;
+            _passwordInputIcon = Icons.Material.Filled.VisibilityOff;
+            _passwordInput = InputType.Password;
+        }
+        else
+        {
+            _passwordVisibility = true;
+            _passwordInputIcon = Icons.Material.Filled.Visibility;
+            _passwordInput = InputType.Text;
+        }
+    }
+    
+    private async Task SubmitAsync()
+    {
+        if (Model.Password != ConfirmPassword)
+        {
+            Snackbar.Add("Passwords do not match.", Severity.Error);
+            return;
+        }
+        try
+        {
+            await AdminUserHttpClient.CreateAsync(Model);
+            Snackbar.Add("Admin User created successfully.", Severity.Success);
+            MudDialog.Close();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Something went wrong. Please try again.", Severity.Error);
+        }
+    }
+}

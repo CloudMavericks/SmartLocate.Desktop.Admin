@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using SmartLocate.Desktop.Admin.Services;
+using SmartLocate.Desktop.Admin.Services.HttpClients;
 
 namespace SmartLocate.Desktop.Admin.Extensions;
 
@@ -32,5 +33,10 @@ internal static class DependencyInjection
 
     private static void RegisterHttpClients(this IServiceCollection services)
     {
+        services.AddTransient<AdminUserHttpClient>();
+        services.AddTransient<BusHttpClient>();
+        services.AddTransient<BusDriverHttpClient>();
+        services.AddTransient<BusRouteHttpClient>();
+        services.AddTransient<StudentHttpClient>();
     }
 }

@@ -1,0 +1,135 @@
+﻿@page "/BusRoutes/Add"
+@inject BusRouteHttpClient BusRouteHttpClient
+@inject IJSRuntime JsRuntime
+@using SmartLocate.Desktop.Admin.Models.BusRoutes
+@using SmartLocate.Desktop.Admin.Services.HttpClients
+@using SmartLocate.Desktop.Admin.Shared.Components
+@using SmartLocate.Desktop.Admin.Controls.Leaflet
+
+<EditForm Model="@Model" OnValidSubmit="SubmitAsync">
+    <DataAnnotationsValidator />
+    <MudPaper Outlined Class="mb-4">
+        <MudStack Row Justify="Justify.SpaceBetween" Class="pa-3">
+            <MudStack Class="px-1" Spacing="0">
+                <MudText Typo="Typo.h5" Color="Color.Primary">New Bus Route</MudText>
+                <MudText>Create a new bus route from the map.</MudText>
+            </MudStack>
+            <MudStack Row AlignItems="AlignItems.Center">
+                <MudButton Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Filled" ButtonType="ButtonType.Submit">Create</MudButton>
+                <MudButton Color="Color.Default" StartIcon="@Icons.Material.Filled.Clear" Variant="Variant.Filled" OnClick="@ConfirmCancel">Cancel</MudButton>
+            </MudStack>
+        </MudStack>
+        <MudDivider DividerType="DividerType.FullWidth" />
+        <MudGrid Class="pa-4" Spacing="1">
+            <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Route Number" 
+                              @bind-Value="@Model.RouteNumber" For="@(() => Model.RouteNumber)" InputType="InputType.Number" />
+            </MudItem>
+        </MudGrid>
+        <MudGrid Class="px-4 pb-4" Spacing="1">
+            <MudItem xs="12" md="6">
+                <MudText>@RoutePoints.Count</MudText>
+                @foreach (var point in RoutePoints)
+                {
+                    <MudChip Text="@point.ToString()" Color="Color.Secondary"/>
+                }
+                <MudList Clickable Dense>
+                    @foreach (var point in RoutePoints)
+                    {
+                        <MudListItem Icon="@Icons.Material.Filled.LocationOn" OnClick="@(() => MoveToPoint(point))">
+                            @point.ToString()
+                            @* <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Secondary" OnClick="@(() => RemovePoint(point))"/> *@
+                        </MudListItem>
+                    }
+                </MudList>
+                <MudText>@RoutePoints.Count</MudText>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <div id="leaflet-container" class="rounded" style="height: 360px;">
+                    <LeafletMap Map="@Map"/>
+                </div>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+</EditForm>
+
+@code {
+    private CreateBusRouteRequest Model { get; } = new();
+    private Map Map { get; set; }
+    private ICollection<LatLng> RoutePoints { get; } = [];
+    
+    private readonly LatLng _destinationPoint = new(13.356f, 80.141f);
+
+    protected override void OnInitialized()
+    {
+        Map = new Map(JsRuntime)
+        {
+            Center = _destinationPoint,
+            Zoom = 7
+        };
+        Map.OnInitialized += () =>
+        {
+            Map.AddLayer(new TileLayer()
+            {
+                UrlTemplate = "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                Attribution = "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors",
+            });
+            foreach (var point in RoutePoints)
+            {
+                Map.AddLayer(new Marker(position: point));
+            }
+            StateHasChanged();
+        };
+        Map.OnClick += (map, mouseEvent) =>
+        {
+            RoutePoints.Add(mouseEvent.LatLng);
+            map.AddLayer(new Marker(position: mouseEvent.LatLng));
+            StateHasChanged();
+        };
+    }
+
+    private void MoveToPoint(LatLng point)
+    {
+        Map.PanTo(position: point, animate: true, duration: 10f);
+    }
+    
+    private void RemovePoint(LatLng point)
+    {
+        if(!RoutePoints.Contains(point))
+        {
+            Snackbar.Add("Point not found.", Severity.Error);
+            return;
+        }
+        if(point == _destinationPoint)
+        {
+            Snackbar.Add("Destination point cannot be removed.", Severity.Error);
+            return;
+        }
+        var marker = Map.GetLayers().First(x => x is Marker marker && marker.Position == point);
+        Map.RemoveLayer(marker);
+        RoutePoints.Remove(point);
+    }
+
+    private async Task SubmitAsync()
+    {
+        try
+        {
+            await BusRouteHttpClient.CreateAsync(Model);
+            Snackbar.Add("Bus Route created successfully.", Severity.Success);
+            NavigationManager.NavigateTo("/BusRoutes");
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Something went wrong. Please try again.", Severity.Error);
+        }
+    }
+
+    private async Task ConfirmCancel()
+    {
+        if(await DialogService.ShowMessageBox("Discard new bus route?", "Are you sure want to discard this new route?", yesText: "Discard", cancelText: "Cancel") == true)
+        {
+            NavigationManager.NavigateTo("/BusRoutes", replace: true);
+        }
+    }
+
+}

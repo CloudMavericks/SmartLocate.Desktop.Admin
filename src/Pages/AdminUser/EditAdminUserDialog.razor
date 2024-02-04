@@ -1,0 +1,61 @@
+﻿@inject AdminUserHttpClient AdminUserHttpClient
+@using SmartLocate.Desktop.Admin.Models.AdminUsers
+@using SmartLocate.Desktop.Admin.Services.HttpClients
+<EditForm Model="Model" OnValidSubmit="SubmitAsync">
+    <DataAnnotationsValidator />
+    <MudDialog>
+        <TitleContent>
+            <MudText Typo="Typo.h6"><MudIcon Icon="@Icons.Material.Filled.Edit" Class="me-3 mb-n1 ms-n1"/>Edit Admin User</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudGrid Spacing="1" Class="my-n2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Name" 
+                                  @bind-Value="@Model.Name" For="@(() => Model.Name)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Email" 
+                                  @bind-Value="@Model.Email" For="@(() => Model.Email)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Phone Number" 
+                                  @bind-Value="@Model.PhoneNumber" For="@(() => Model.PhoneNumber)" />
+                </MudItem>
+                <MudItem xs="12" sm="6" Class="align-items-center">
+                    <MudCheckBox T="bool" @bind-Checked="@Model.IsSuperAdmin" Label="Enable Super-Admin privileges" />
+                </MudItem>
+            </MudGrid>
+        </DialogContent>
+        <DialogActions>
+            <MudButton Variant="Variant.Filled" DisableElevation StartIcon="@Icons.Material.Filled.Update" Color="Color.Primary" ButtonType="ButtonType.Submit">Update</MudButton>
+            <MudButton Variant="Variant.Filled" DisableElevation OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        </DialogActions>
+    </MudDialog>
+</EditForm>
+
+@code {
+    
+    [Parameter]
+    public UpdateAdminUserRequest Model { get; set; } = new();
+    
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; }
+    
+    private async Task SubmitAsync()
+    {
+        try
+        {
+            await AdminUserHttpClient.UpdateAsync(Model);
+            Snackbar.Add("Admin User updated successfully.", Severity.Success);
+            MudDialog.Close();
+        }
+        catch (HttpRequestException e)
+        {
+            Snackbar.Add(e.StatusCode == System.Net.HttpStatusCode.NotFound ? "Admin User not found." : "Something went wrong. Please try again.", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Something went wrong. Please try again.", Severity.Error);
+        }
+    }
+}

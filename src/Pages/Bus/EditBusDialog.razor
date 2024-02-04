@@ -1,0 +1,64 @@
+﻿@using SmartLocate.Desktop.Admin.Services.HttpClients
+@using SmartLocate.Desktop.Admin.Models.Buses
+@using SmartLocate.Desktop.Admin.Enums
+@inject BusHttpClient BusHttpClient
+
+<EditForm Model="Model" OnValidSubmit="SubmitAsync">
+    <DataAnnotationsValidator />
+    <MudDialog>
+        <TitleContent>
+            <MudText Typo="Typo.h6"><MudIcon Icon="@Icons.Material.Filled.Edit" Class="me-3 mb-n1 ms-n1"/>Edit Bus</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudGrid Spacing="1" Class="my-n2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Vehicle Model" 
+                                  @bind-Value="@Model.VehicleModel" For="@(() => Model.VehicleModel)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Vehicle Number" 
+                                  @bind-Value="@Model.VehicleNumber" For="@(() => Model.VehicleNumber)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="VehicleStatus" Margin="Margin.Dense" Variant="Variant.Outlined" Label="Status"
+                               @bind-Value="@Model.Status" For="@(() => Model.Status)">
+                        @foreach (var value in Enum.GetValues<VehicleStatus>())
+                        {
+                            <MudSelectItem Value="@value">@value.ToDescriptionString()</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+        </DialogContent>
+        <DialogActions>
+            <MudButton Variant="Variant.Filled" DisableElevation StartIcon="@Icons.Material.Filled.Update" Color="Color.Primary" ButtonType="ButtonType.Submit">Update</MudButton>
+            <MudButton Variant="Variant.Filled" DisableElevation OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        </DialogActions>
+    </MudDialog>
+</EditForm>
+
+@code {
+    [Parameter]
+    public UpdateBusRequest Model { get; set; } = new();
+    
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; }
+    
+    private async Task SubmitAsync()
+    {
+        try
+        {
+            await BusHttpClient.UpdateAsync(Model);
+            Snackbar.Add("Bus updated successfully.", Severity.Success);
+            MudDialog.Close();
+        }
+        catch (HttpRequestException e)
+        {
+            Snackbar.Add(e.StatusCode == System.Net.HttpStatusCode.NotFound ? "Bus not found." : "Something went wrong. Please try again.", Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Something went wrong. Please try again.", Severity.Error);
+        }
+    }
+}

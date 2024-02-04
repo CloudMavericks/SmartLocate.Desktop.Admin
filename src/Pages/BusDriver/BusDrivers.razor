@@ -1,0 +1,182 @@
+﻿@page "/BusDrivers"
+@inject BusDriverHttpClient BusDriverHttpClient
+@using SmartLocate.Desktop.Admin.Services.HttpClients
+@using SmartLocate.Desktop.Admin.Models.BusDrivers
+@using System.Net
+
+<MudStack AlignItems="AlignItems.Center" Spacing="0">
+    <MudText Typo="Typo.h5" Color="Color.Primary">Bus Drivers</MudText>
+    <MudText Typo="Typo.body2">Manage all bus drivers in the college</MudText>
+</MudStack>
+<MudPaper Outlined Class="my-4">
+    <MudStack Row Class="px-3 py-2" AlignItems="AlignItems.Center">
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <MudTooltip Text="New Bus Driver">
+                <MudIconButton Variant="Variant.Filled" Color="Color.Primary" Icon="@Icons.Material.Filled.Add"
+                               OnClick="@CreateNewBusDriverAsync"/>
+            </MudTooltip>
+            <MudTooltip Text="Reload">
+                <MudIconButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(() => OnSearch(_searchQuery))"
+                               Icon="@Icons.Material.Filled.Refresh"/>
+            </MudTooltip>
+            <MudTextField T="@string" ValueChanged="@(OnSearch)" DebounceInterval="300" Placeholder="Search for Bus Drivers"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Small"
+                          Variant="Variant.Outlined" Margin="Margin.Dense"/>
+        </MudHidden>
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudStack AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                           IconColor="Color.Surface" OnClick="@CreateNewBusDriverAsync">New Bus Driver</MudButton>
+            </MudStack>
+            <MudStack AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(() => OnSearch(_searchQuery))"
+                           StartIcon="@Icons.Material.Filled.Refresh" IconColor="Color.Surface">Reload</MudButton>
+            </MudStack>
+            <MudStack AlignItems="AlignItems.Center" Class="flex-grow-1"></MudStack>
+            <MudStack AlignItems="AlignItems.Center" Class="flex-grow-1 ms-auto me-0">
+                <MudTextField T="@string" ValueChanged="@(OnSearch)" DebounceInterval="300" Placeholder="Search for Bus Drivers"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" FullWidth/>
+            </MudStack>
+        </MudHidden>
+    </MudStack>
+    <MudDivider DividerType="DividerType.FullWidth"/>
+    <MudTable Dense Hover Breakpoint="Breakpoint.None" HorizontalScrollbar LoadingProgressColor="Color.Secondary" Elevation="0"
+              @ref="@_mudTable" ServerData="@OnServerReloadAsync" OnRowClick="@OnRowClick" T="BusDriverResponse" Style="white-space: nowrap">
+        <NoRecordsContent>
+            <MudAlert Class="my-n3" Severity="Severity.Normal">No bus drivers found.</MudAlert>
+        </NoRecordsContent>
+        <LoadingContent>
+            <MudText Typo="Typo.body1" Align="Align.Center" GutterBottom="true">Loading...</MudText>
+        </LoadingContent>
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Phone Number</MudTh>
+            <MudTh>Activated</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="busDriver">
+            <MudTd DataLabel="Name"><MudHighlighter HighlightedText="@_searchQuery" Text="@busDriver.Name"/></MudTd>
+            <MudTd DataLabel="Phone Number"><MudHighlighter HighlightedText="@_searchQuery" Text="@busDriver.PhoneNumber"/></MudTd>
+            <MudTd DataLabel="Activated">
+                @if (busDriver.IsActivated)
+                {
+                    <MudChip Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Text="Yes" 
+                             Icon="@Icons.Material.Filled.Check"/>
+                }
+                else
+                {
+                    <MudChip Size="Size.Small" Variant="Variant.Filled" Color="Color.Default" Text="No" 
+                             Icon="@Icons.Material.Filled.Close"/>
+                }
+            </MudTd>
+            <MudTd>
+                <MudStack Row>
+                    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Edit" Color="Color.Warning"
+                               Size="Size.Small" OnClick="@(() => EditAsync(busDriver))">Edit</MudButton>
+                    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Delete" Color="Color.Error"
+                               Size="Size.Small" OnClick="@(() => DeleteAsync(busDriver))">Delete</MudButton>
+                </MudStack>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager/>
+        </PagerContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    
+    private IList<BusDriverResponse> _list = new List<BusDriverResponse>();
+    private MudTable<BusDriverResponse> _mudTable;
+    private long _totalItems;
+    private string _searchQuery = string.Empty;
+
+    private async Task<TableData<BusDriverResponse>> OnServerReloadAsync(TableState tableState)
+    {
+        if (!string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            tableState.Page = 0;
+        }
+        await LoadDataAsync(tableState.Page, tableState.PageSize);
+        return new TableData<BusDriverResponse> { TotalItems = (int)_totalItems, Items = _list };
+    }
+
+    private async Task LoadDataAsync(int page, int pageSize)
+    {
+        try
+        {
+            var resultSet = await BusDriverHttpClient.GetAsync(page + 1, pageSize, _searchQuery);
+            _totalItems = resultSet.TotalCount;
+            _list = resultSet.Items;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Something went wrong. Please try again." + ex.Message, Severity.Error); 
+        }
+    }
+
+    private Task OnSearch(string text)
+    {
+        _searchQuery = text;
+        return _mudTable.ReloadServerData();
+    }
+    
+    private async Task CreateNewBusDriverAsync()
+    {
+        var dialogOptions = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, DisableBackdropClick = true };
+        var dialog = await DialogService.ShowAsync<AddBusDriverDialog>("Add Bus Driver", dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await _mudTable.ReloadServerData();
+        }
+    }
+    
+    private Task OnRowClick(TableRowClickEventArgs<BusDriverResponse> args)
+    {
+        return EditAsync(args.Item);
+    }
+    
+    private async Task EditAsync(BusDriverResponse supplierResponse)
+    {
+        var dialogOptions = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, DisableBackdropClick = true };
+        var parameters = new DialogParameters {
+        {
+            nameof(EditBusDriverDialog.Model), new UpdateBusDriverRequest()
+            {
+                Id = supplierResponse.Id,
+                Name = supplierResponse.Name,
+                PhoneNumber = supplierResponse.PhoneNumber,
+            }
+        } };
+        var dialog = await DialogService.ShowAsync<EditBusDriverDialog>("Edit Bus Driver", parameters, dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await _mudTable.ReloadServerData();
+        }
+    }
+    
+    private async Task DeleteAsync(BusDriverResponse adminUser)
+    {
+        if(await DialogService.ShowDeleteDialog("Delete Bus Driver", "Are you sure you want to delete this Bus Driver?", yesText: "Delete", cancelText: "Cancel"))
+        {
+            try
+            {
+                await BusDriverHttpClient.DeleteAsync(adminUser.Id);
+                Snackbar.Add("Bus Driver deleted successfully.", Severity.Success);
+                await _mudTable.ReloadServerData();
+            }
+            catch (HttpRequestException e)
+            {
+                Snackbar.Add(e.StatusCode == HttpStatusCode.NotFound ? "Bus Driver not found." : "Something went wrong. Please try again.", Severity.Error);
+            }
+            catch (Exception)
+            {
+                Snackbar.Add("Something went wrong. Please try again.", Severity.Error);
+            }
+        }
+    }
+    
+}

@@ -1,4 +1,5 @@
-﻿<MudThemeProvider @bind-IsDarkMode="@AppThemeService.IsDarkMode" />
+﻿@using SmartLocate.Desktop.Admin.Shared
+<MudThemeProvider Theme="@AppTheme.Default" @bind-IsDarkMode="@AppThemeService.IsDarkMode" />
 <MudDialogProvider />
 <MudSnackbarProvider />
 <Router AppAssembly="@typeof(App).Assembly">

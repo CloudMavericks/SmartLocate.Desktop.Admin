@@ -1,0 +1,180 @@
+﻿@page "/Students"
+@inject StudentHttpClient StudentHttpClient
+@using SmartLocate.Desktop.Admin.Services.HttpClients
+@using SmartLocate.Desktop.Admin.Models.Students
+@using System.Net
+
+<MudStack AlignItems="AlignItems.Center" Spacing="0">
+    <MudText Typo="Typo.h5" Color="Color.Primary">Students</MudText>
+    <MudText Typo="Typo.body2">Manage all your students here.</MudText>
+</MudStack>
+
+<MudPaper Outlined Class="my-4">
+    <MudStack Row Class="px-3 py-2" AlignItems="AlignItems.Center">
+        <MudHidden Breakpoint="Breakpoint.MdAndUp">
+            <MudTooltip Text="New Student">
+                <MudIconButton Variant="Variant.Filled" Color="Color.Primary" Icon="@Icons.Material.Filled.Add"
+                               OnClick="@CreateNewStudentAsync"/>
+            </MudTooltip>
+            <MudTooltip Text="Reload">
+                <MudIconButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(() => OnSearch(_searchQuery))"
+                               Icon="@Icons.Material.Filled.Refresh"/>
+            </MudTooltip>
+            <MudTextField T="@string" ValueChanged="@(OnSearch)" DebounceInterval="300" Placeholder="Search for Students"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Small"
+                          Variant="Variant.Outlined" Margin="Margin.Dense"/>
+        </MudHidden>
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudStack AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                           IconColor="Color.Surface" OnClick="@CreateNewStudentAsync">New Student</MudButton>
+            </MudStack>
+            <MudStack AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(() => OnSearch(_searchQuery))"
+                           StartIcon="@Icons.Material.Filled.Refresh" IconColor="Color.Surface">Reload</MudButton>
+            </MudStack>
+            <MudStack AlignItems="AlignItems.Center" Class="flex-grow-1"></MudStack>
+            <MudStack AlignItems="AlignItems.Center" Class="flex-grow-1 ms-auto me-0">
+                <MudTextField T="@string" ValueChanged="@(OnSearch)" DebounceInterval="300" Placeholder="Search for Students"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" FullWidth/>
+            </MudStack>
+        </MudHidden>
+    </MudStack>
+    <MudDivider DividerType="DividerType.FullWidth"/>
+    <MudTable Dense Hover Breakpoint="Breakpoint.None" HorizontalScrollbar LoadingProgressColor="Color.Secondary" Elevation="0"
+              @ref="@_mudTable" ServerData="@OnServerReloadAsync" OnRowClick="@OnRowClick" T="StudentResponse" Style="white-space: nowrap">
+        <NoRecordsContent>
+            <MudAlert Class="my-n3" Severity="Severity.Normal">No students found.</MudAlert>
+        </NoRecordsContent>
+        <LoadingContent>
+            <MudText Typo="Typo.body1" Align="Align.Center" GutterBottom="true">Loading...</MudText>
+        </LoadingContent>
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Bus Route</MudTh>
+            <MudTh>Email</MudTh>
+            <MudTh>Phone Number</MudTh>
+            <MudTh>Activated</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="student">
+            <MudTd DataLabel="Name"><MudHighlighter HighlightedText="@_searchQuery" Text="@student.Name"/></MudTd>
+            <MudTd DataLabel="Bus Route"><MudHighlighter HighlightedText="@_searchQuery" Text="@student.DefaultBusRouteNumber.ToString()"/></MudTd>
+            <MudTd DataLabel="Email"><MudHighlighter HighlightedText="@_searchQuery" Text="@student.Email"/></MudTd>
+            <MudTd DataLabel="Phone Number"><MudHighlighter HighlightedText="@_searchQuery" Text="@student.PhoneNumber"/></MudTd>
+            <MudTd DataLabel="Activated">
+                <MudCheckBox T="bool" Color="Color.Primary" UnCheckedColor="Color.Default" Checked="@student.IsActivated" ReadOnly />
+            </MudTd>
+            <MudTd>
+                <MudStack Row>
+                    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Edit" Color="Color.Warning"
+                               Size="Size.Small" OnClick="@(() => EditAsync(student))">Edit</MudButton>
+                    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Delete" Color="Color.Error"
+                               Size="Size.Small" OnClick="@(() => DeleteAsync(student.Id))">Delete</MudButton>
+                </MudStack>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager/>
+        </PagerContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    private IList<StudentResponse> _list = new List<StudentResponse>();
+    private MudTable<StudentResponse> _mudTable;
+    private long _totalItems;
+    private string _searchQuery = string.Empty;
+
+    private async Task<TableData<StudentResponse>> OnServerReloadAsync(TableState tableState)
+    {
+        if (!string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            tableState.Page = 0;
+        }
+        await LoadDataAsync(tableState.Page, tableState.PageSize);
+        return new TableData<StudentResponse> { TotalItems = (int)_totalItems, Items = _list };
+    }
+
+    private async Task LoadDataAsync(int page, int pageSize)
+    {
+        try
+        {
+            var response = await StudentHttpClient.GetAsync(page + 1, pageSize, _searchQuery);
+            _totalItems = response.TotalCount;
+            _list = response.Items;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Something went wrong. Please try again." + ex.Message, Severity.Error); 
+        }
+    }
+
+    private Task OnSearch(string text)
+    {
+        _searchQuery = text;
+        return _mudTable.ReloadServerData();
+    }
+    
+    private async Task CreateNewStudentAsync()
+    {
+        var dialogOptions = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, DisableBackdropClick = true };
+        var dialog = await DialogService.ShowAsync<AddStudentDialog>("Add Student", dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await _mudTable.ReloadServerData();
+        }
+    }
+    
+    private Task OnRowClick(TableRowClickEventArgs<StudentResponse> args)
+    {
+        return EditAsync(args.Item);
+    }
+    
+    private async Task EditAsync(StudentResponse supplierResponse)
+    {
+        var dialogOptions = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, DisableBackdropClick = true };
+        var parameters = new DialogParameters {
+        {
+            nameof(EditStudentDialog.Model), new UpdateStudentRequest()
+            {
+                Id = supplierResponse.Id,
+                Name = supplierResponse.Name,
+                Email = supplierResponse.Email,
+                PhoneNumber = supplierResponse.PhoneNumber,
+                Address = supplierResponse.Address,
+                DefaultBusRouteId = supplierResponse.DefaultBusRouteId,
+                // DefaultPickupDropOffLocation = supplierResponse.DefaultPickupDropOffLocation,
+            }
+        } };
+        var dialog = await DialogService.ShowAsync<EditStudentDialog>("Edit Student", parameters, dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await _mudTable.ReloadServerData();
+        }
+    }
+    
+    private async Task DeleteAsync(Guid id)
+    {
+        if(await DialogService.ShowDeleteDialog("Delete Student", "Are you sure you want to delete this Student?", yesText: "Delete", cancelText: "Cancel"))
+        {
+            try
+            {
+                await StudentHttpClient.DeleteAsync(id);
+                Snackbar.Add("Student deleted successfully.", Severity.Success);
+                await _mudTable.ReloadServerData();
+            }
+            catch (HttpRequestException e)
+            {
+                Snackbar.Add(e.StatusCode == HttpStatusCode.NotFound ? "Student not found." : "Something went wrong. Please try again.", Severity.Error);
+            }
+            catch (Exception)
+            {
+                Snackbar.Add("Something went wrong. Please try again.", Severity.Error);
+            }
+        }
+    }
+}

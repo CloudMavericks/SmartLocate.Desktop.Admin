@@ -1,6 +1,7 @@
 @using SmartLocate.Desktop.Admin.Models.Identity
 @using System.Net.Http.Headers
-<MudThemeProvider @bind-IsDarkMode="@AppThemeService.IsDarkMode" />
+@using SmartLocate.Desktop.Admin.Shared
+<MudThemeProvider Theme="@AppTheme.Default" @bind-IsDarkMode="@AppThemeService.IsDarkMode" />
 <MudDialogProvider />
 <MudSnackbarProvider />
 <MudContainer Class="d-flex justify-center align-center" Style="height: 100vh;">
@@ -15,7 +16,7 @@
                 <MudItem xs="12">
                     <MudTextField Margin="Margin.Dense" Label="Email" Variant="Variant.Outlined" @bind-Value="@_requestModel.Email" For="@(() => _requestModel.Email)" />
                 </MudItem>
-                <MudItem xs="12">
+                <MudItem xs="12"> 
                     <MudTextField Margin="Margin.Dense" Label="Password" Variant="Variant.Outlined" @bind-Value="@_requestModel.Password" For="@(() => _requestModel.Password)" 
                                   InputType="@_passwordInput" Adornment="Adornment.End" AdornmentIcon="@_passwordInputIcon" OnAdornmentClick="@TogglePasswordVisibility" />
                 </MudItem>
@@ -39,12 +40,13 @@
             {
                 var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
                 LocalStorageService.SetItem("token", result.Token);
+                LocalStorageService.SetItem("refreshToken", result.RefreshToken);
                 HttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", result.Token);
                 App.ChangeMainWindowAs<MainWindow>();
             }
             else
             {
-                Snackbar.Add("Invalid username or password", Severity.Error);
+                Snackbar.Add(response.StatusCode.ToString(), Severity.Error);
             }
         }
         catch (Exception e)
