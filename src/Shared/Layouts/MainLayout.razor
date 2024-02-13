@@ -15,9 +15,7 @@
                 <MudButton Href="/" Class="ms-2 me-1" Color="Color.Inherit" Variant="Variant.Text">Home</MudButton>
                 <MudMenu Dense AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
                     <ActivatorContent>
-                        <MudButton Class="mx-1" Color="Color.Inherit" Variant="Variant.Text" EndIcon="@Icons.Material.Filled.KeyboardArrowDown">
-                            Catalog
-                        </MudButton>
+                        <MudButton Class="mx-1" Color="Color.Inherit" Variant="Variant.Text" EndIcon="@Icons.Material.Filled.KeyboardArrowDown">Catalog</MudButton>
                     </ActivatorContent>
                     <ChildContent>
                         <MudMenuItem Href="/Buses">Bus</MudMenuItem>
@@ -41,6 +39,9 @@
             <MudTooltip Text="Toggle light/dark theme">
                 <MudToggleIconButton @bind-Toggled="@AppThemeService.IsDarkMode" ToggledIcon="@Icons.Material.Filled.LightMode" Icon="@Icons.Material.Filled.DarkMode" Color="Color.Inherit"/>
             </MudTooltip>
+            <MudTooltip Text="Log out">
+                <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" OnClick="@LogoutAsync" />
+            </MudTooltip>
             <MudIconButton Color="Color.Inherit" Icon="@Icons.Material.Filled.Help" Edge="Edge.End" />
         </MudAppBar>
         <MudHidden Breakpoint="Breakpoint.MdAndUp">
@@ -63,15 +64,24 @@
             </MudDrawer>
         </MudHidden>
         <MudMainContent>
-            <MudContainer MaxWidth="MaxWidth.False" Class="mt-5">
+            <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
                 @Body
             </MudContainer>
         </MudMainContent>
     </MudLayout>
 </AuthorizeView>
 
-@code{
-
+@code {
     private bool IsOpen { get; set; }
 
+    private async Task LogoutAsync()
+    {
+        if (await DialogService.ShowMessageBox("Logout?", "Are you sure you want to logout?", yesText: "Yes", cancelText: "No") == true)
+        {
+            LocalStorageService.RemoveItem("token");
+            LocalStorageService.RemoveItem("refreshToken");
+            LocalStorageService.SetItem("close_mode", "logout");
+            App.ChangeMainWindowAs<LoginWindow>();
+        }
+    }
 }

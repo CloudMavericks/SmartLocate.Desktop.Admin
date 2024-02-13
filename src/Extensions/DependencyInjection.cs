@@ -12,8 +12,8 @@ internal static class DependencyInjection
     internal static IServiceProvider Initialize()
     {
         var services = new ServiceCollection();
-        services.AddSingleton<LoginWindow>();
-        services.AddSingleton<MainWindow>();
+        services.AddTransient<LoginWindow>();
+        services.AddTransient<MainWindow>();
         services.AddWpfBlazorWebView();
         services.AddAuthorizationCore();
         services.AddBlazorWebViewDeveloperTools();
