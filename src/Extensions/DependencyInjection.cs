@@ -22,8 +22,8 @@ internal static class DependencyInjection
             client.BaseAddress = new Uri(App.BaseAddress);
         });
         services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("SmartLocateAPI"));
-        services.AddTransient<AuthenticationStateProvider, VelocityAuthenticationStateProvider>();
-        services.AddTransient<VelocityAuthenticationStateProvider>();
+        services.AddTransient<AuthenticationStateProvider, ApplicationAuthStateProvider>();
+        services.AddTransient<ApplicationAuthStateProvider>();
         services.AddSingleton<LocalStorageService>();
         services.AddMudServices();
         services.AddSingleton<AppThemeService>();

@@ -7,39 +7,9 @@ using SmartLocate.Desktop.Admin.Constants;
 
 namespace SmartLocate.Desktop.Admin.Services;
 
-public class VelocityAuthenticationStateProvider(HttpClient httpClient, LocalStorageService localStorageService)
+public class ApplicationAuthStateProvider(HttpClient httpClient, LocalStorageService localStorageService)
     : AuthenticationStateProvider
 {
-    public void MarkUserAsAuthenticated(string userName)
-    {
-        var authenticatedUser = new ClaimsPrincipal(
-            new ClaimsIdentity(new[]
-            {
-                    new Claim(SmartLocateClaimTypes.AdminName, userName)
-            }, "apiauth", SmartLocateClaimTypes.AdminName, SmartLocateClaimTypes.Type));
-
-        var authState = Task.FromResult(new AuthenticationState(authenticatedUser));
-
-        NotifyAuthenticationStateChanged(authState);
-    }
-
-    public void MarkUserAsLoggedOut()
-    {
-        var anonymousUser =
-            new ClaimsPrincipal(new ClaimsIdentity(null, null, SmartLocateClaimTypes.AdminName,
-                SmartLocateClaimTypes.Type));
-        var authState = Task.FromResult(new AuthenticationState(anonymousUser));
-
-        NotifyAuthenticationStateChanged(authState);
-    }
-
-    public async Task<ClaimsPrincipal> GetAuthenticationStateProviderUserAsync()
-    {
-        var state = await GetAuthenticationStateAsync();
-        var authenticationStateProviderUser = state.User;
-        return authenticationStateProviderUser;
-    }
-
     public ClaimsPrincipal AuthenticationStateUser { get; set; }
 
     public override Task<AuthenticationState> GetAuthenticationStateAsync()
