@@ -1,0 +1,42 @@
+﻿@typeparam T
+@if (_isEditing)
+{
+    <MudTextField T="T" Value="@Value" ValueChanged="@OnValueChanged" Label="@Label" 
+                  Margin="Margin.Dense" Variant="Variant.Outlined" OnBlur="@ToggleEdit" />
+}
+else
+{
+    <MudText @onclick="@ToggleEdit" Typo="@Typo">@Value.ToString()</MudText>
+}
+
+@code {
+    private bool _isEditing;    
+
+    private void ToggleEdit()
+    {
+        if(Editable)
+            _isEditing = !_isEditing;
+    }
+
+    [Parameter]
+    public bool Editable { get; set; } = true;
+    
+    [Parameter]
+    public T Value { get; set; }
+    
+    [Parameter]
+    public EventCallback<T> ValueChanged { get; set; }
+    
+    [Parameter]
+    public Typo Typo { get; set; }
+    
+    [Parameter]
+    public string Label { get; set; }
+    
+    private Task OnValueChanged(T value)
+    {
+        _isEditing = false;
+        return ValueChanged.InvokeAsync(value);
+    }
+
+}
