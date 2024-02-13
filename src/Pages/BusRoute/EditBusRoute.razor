@@ -1,6 +1,244 @@
 ﻿@page "/BusRoutes/{Id:guid}/Edit"
 
+@inject BusRouteHttpClient BusRouteHttpClient
+@inject IJSRuntime JsRuntime
+@using SmartLocate.Desktop.Admin.Models.BusRoutes
+@using SmartLocate.Desktop.Admin.Services.HttpClients
+@using SmartLocate.Desktop.Admin.Shared.Components
+@using SmartLocate.Desktop.Admin.Controls.Leaflet
+@using SmartLocate.Desktop.Admin.Models
+
+<MudPaper Outlined Class="mb-4">
+    <MudStack Row Justify="Justify.SpaceBetween" Class="pa-3">
+        <MudStack Class="px-1" Spacing="0">
+            <MudText Typo="Typo.h5" Color="Color.Primary">Edit Bus Route</MudText>
+            <MudText>Edit existing bus route from the map.</MudText>
+        </MudStack>
+        <MudStack Row AlignItems="AlignItems.Center">
+            <MudButton Color="Color.Primary" StartIcon="@Icons.Material.Filled.Update" Variant="Variant.Filled" OnClick="@SubmitAsync">Update</MudButton>
+            <MudButton Color="Color.Default" StartIcon="@Icons.Material.Filled.Clear" Variant="Variant.Filled" OnClick="@ConfirmCancel">Cancel</MudButton>
+        </MudStack>
+    </MudStack>
+    <MudDivider DividerType="DividerType.FullWidth" />
+    <MudGrid Class="pa-4" Spacing="1">
+        <MudItem xs="12" sm="6" md="4" lg="3">
+            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Route Number" 
+                          @bind-Value="@Model.RouteNumber" For="@(() => Model.RouteNumber)" InputType="InputType.Number" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4" lg="3">
+            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Label="Route Name" 
+                          @bind-Value="@Model.RouteName" For="@(() => Model.RouteName)" />
+        </MudItem>
+    </MudGrid>
+    <MudGrid Class="px-4 pb-4" Spacing="1">
+        <MudItem xs="12" md="7">
+            <div id="leaflet-container" class="rounded" style="height: 420px;">
+                <LeafletMap Map="@Map"/>
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="5">
+            <MudPaper Class="rounded d-flex flex-column" Style="background-color: #000; height: 420px;">
+                <MudList Clickable @bind-SelectedItem="SelectedItem" @bind-SelectedValue="@_selectedPoint" Dense Class="rounded rounded-b-0 flex-grow-1" Style="overflow-y: scroll">
+                    @foreach (var point in RoutePoints.Where(x => x != _destinationPoint))
+                    {
+                        <MudListItem Value="@point" Dense="true" Class="rounded" IconSize="Size.Small" Icon="@Icons.Material.Filled.LocationOn" OnClick="@(() => MoveToPoint(point))">
+                            <div class="d-flex justify-space-between align-center">
+                                <EditableMudText T="string" @bind-Value="@point.Name" Label="Point Name" />
+                                <div class="d-flex align-center">
+                                    @if(RoutePoints.IndexOf(point) != 0)
+                                    {
+                                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.ArrowUpward" Color="Color.Secondary" OnClick="@(() => MoveUpInList(point))"/>
+                                    }
+                                    else
+                                    {
+                                        <MudChip Size="Size.Small" Color="Color.Success">Start Point</MudChip>
+                                    }
+                                    @if(RoutePoints.IndexOf(point) != RoutePoints.Count - 2)
+                                    {
+                                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.ArrowDownward" Color="Color.Secondary" OnClick="@(() => MoveDownInList(point))"/>
+                                    }
+                                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => RemovePoint(point))"/>
+                                </div>
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+                <MudList Dense Class="rounded rounded-t-0" >
+                    <MudListItem Value="@_destinationPoint" Dense="true" Class="rounded" IconSize="Size.Small" Icon="@Icons.Material.Filled.LocationOn" OnClick="@(() => MoveToPoint(_destinationPoint))">
+                        <div class="d-flex justify-space-between align-center">
+                            <MudText>@_destinationPoint.Name</MudText>
+                            <MudChip Size="Size.Small" Color="Color.Success">Destination</MudChip>
+                        </div>
+                    </MudListItem>
+                </MudList>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
 
 @code {
+    [Parameter]
+    public Guid Id { get; set; }
     
+    private UpdateBusRouteRequest Model { get; } = new();
+    private Map Map { get; set; }
+    private IList<Point> RoutePoints { get; set; } = [];
+
+    private readonly Point _destinationPoint = new(13.356f, 80.141f) { Name = "R.M.K. Engineering College" };
+        
+    private MudListItem SelectedItem { get; set; }
+    private object _selectedPoint;
+
+    protected override Task OnInitializedAsync()
+    {
+        Map = new Map(JsRuntime)
+        {
+            Center = _destinationPoint,
+            Zoom = 7
+        };
+        return base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var route = await BusRouteHttpClient.GetAsync(Id);
+        if(route == null)
+        {
+            Snackbar.Add("Bus route not found", Severity.Error);
+            NavigationManager.NavigateTo("/BusRoutes");
+            return;
+        }
+        Model.Id = route.Id;
+        Model.RouteNumber = route.RouteNumber;
+        Model.RouteName = route.RouteName;
+        RoutePoints = route.RoutePoints;
+        Map.OnInitialized += () =>
+        {
+            Map.AddLayer(new TileLayer()
+            {
+                UrlTemplate = "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                //Attribution = "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors",
+            });
+            foreach (var point in RoutePoints)
+            {
+                if(point == _destinationPoint)
+                {
+                    Map.AddLayer(new Marker(position: point) { Draggable = false });
+                    continue;
+                }
+                Map.AddLayer(new Marker(position: point) { Draggable = true });
+            }
+            Map.CreateRoutingControl(RoutePoints.Select(x => (LatLng)x).ToList());
+            StateHasChanged();
+        };
+        Map.OnClick += (map, mouseEvent) =>
+        {
+            if (RoutePoints.Count > 1)
+            {
+                RoutePoints.Insert(RoutePoints.Count - 1, mouseEvent.LatLng);
+            }
+            else
+            {
+                RoutePoints.Insert(0, mouseEvent.LatLng);
+            }
+            var marker = new Marker(position: mouseEvent.LatLng) { Draggable = true };
+            marker.OnDrag += (sender, args) =>
+            {
+                var index = RoutePoints.IndexOf(sender.Position);
+                RoutePoints[index] = args.LatLng;
+                Map.UpdateWaypoints(RoutePoints.Select(x => (LatLng)x).ToList());
+            };
+            Map.AddLayer(marker);
+            _selectedPoint = mouseEvent.LatLng;
+            MoveToPoint(_selectedPoint as LatLng);
+            map.UpdateWaypoints(RoutePoints.Select(x => (LatLng)x).ToList());
+            StateHasChanged();
+        };
+    }
+
+    private void MoveToPoint(LatLng point)
+    {
+        Map.PanTo(position: point, animate: true, duration: 4f);
+        _selectedPoint = point;
+    }
+    
+    private void MoveDownInList(LatLng point)
+    {
+        if(RoutePoints.All(x => x != point))
+        {
+            Snackbar.Add("Point not found.", Severity.Error);
+            return;
+        }
+        var index = RoutePoints.IndexOf(point);
+        if(index == RoutePoints.Count - 2)
+        {
+            Snackbar.Add("Point cannot be pushed below the destination.", Severity.Warning);
+            return;
+        }
+        var nextPoint = RoutePoints[index + 1];
+        RoutePoints[index + 1] = point;
+        RoutePoints[index] = nextPoint;
+        Map.UpdateWaypoints(RoutePoints.Select(x => (LatLng)x).ToList());
+    }
+
+    private void MoveUpInList(LatLng point)
+    {
+        if(RoutePoints.All(x => x != point))
+        {
+            Snackbar.Add("Point not found.", Severity.Error);
+            return;
+        }
+        var index = RoutePoints.IndexOf(point);
+        if(index == 0)
+        {
+            Snackbar.Add("Point is already at the top.", Severity.Warning);
+            return;
+        }
+        var previousPoint = RoutePoints[index - 1];
+        RoutePoints[index - 1] = point;
+        RoutePoints[index] = previousPoint;
+        Map.UpdateWaypoints(RoutePoints.Select(x => (LatLng)x).ToList());
+    }
+    
+    private void RemovePoint(LatLng point)
+    {
+        if(!RoutePoints.Contains(point))
+        {
+            Snackbar.Add("Point not found.", Severity.Error);
+            return;
+        }
+        if(point == _destinationPoint)
+        {
+            Snackbar.Add("Destination point cannot be removed.", Severity.Warning);
+            return;
+        }
+        var marker = Map.GetLayers().First(x => x is Marker marker && marker.Position == point);
+        Map.RemoveLayer(marker);
+        RoutePoints.Remove(point);
+        Map.UpdateWaypoints(RoutePoints.Select(x => (LatLng)x).ToList());
+    }
+    
+    private async Task SubmitAsync()
+    {
+        try
+        {
+            Model.StartLocation = RoutePoints.First();
+            Model.RoutePoints = RoutePoints.ToList();
+            await BusRouteHttpClient.UpdateAsync(Model);
+            Snackbar.Add("Bus Route updated successfully.", Severity.Success);
+            NavigationManager.NavigateTo("/BusRoutes");
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Something went wrong. Please try again.", Severity.Error);
+        }
+    }
+    
+    private async Task ConfirmCancel()
+    {
+        if(await DialogService.ShowMessageBox("Discard editing bus route?", "Are you sure want to discard edit?", yesText: "Discard", cancelText: "Cancel") == true)
+        {
+            NavigationManager.NavigateTo("/BusRoutes", replace: true);
+        }
+    }
 }
