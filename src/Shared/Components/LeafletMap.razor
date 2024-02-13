@@ -2,7 +2,7 @@
 @using SmartLocate.Desktop.Admin.Controls.Leaflet.JsInterop
 @inject IJSRuntime JsRuntime
 
-<div id="@Map.Id" style="width: 100%; height: 100%;"></div>
+<div id="@Map.Id" class="rounded" style="width: 100%; height: 100%;"></div>
 
 @code {
     [Parameter] public Map Map { get; set; }

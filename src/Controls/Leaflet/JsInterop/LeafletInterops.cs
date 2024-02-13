@@ -7,13 +7,18 @@ namespace SmartLocate.Desktop.Admin.Controls.Leaflet.JsInterop;
 
 public static class LeafletInterops
 {
-
     private static ConcurrentDictionary<string, (IDisposable, string, Layer)> LayerReferences { get; } = new();
 
     private const string BaseObjectContainer = "window.leaflet";
 
     public static ValueTask Create(IJSRuntime jsRuntime, Map map) =>
         jsRuntime.InvokeVoidAsync($"{BaseObjectContainer}.create", map, DotNetObjectReference.Create(map));
+    
+    public static ValueTask CreateRoutingControl(IJSRuntime jsRuntime, string mapId, ICollection<LatLng> waypoints, bool allowRoutingWhileDragging) =>
+        jsRuntime.InvokeVoidAsync($"{BaseObjectContainer}.createRoutingControl", mapId, waypoints, allowRoutingWhileDragging);
+    
+    public static ValueTask UpdateWaypoints(IJSRuntime jsRuntime, string mapId, ICollection<LatLng> waypoints) =>
+        jsRuntime.InvokeVoidAsync($"{BaseObjectContainer}.updateWaypoints", mapId, waypoints);
 
     private static DotNetObjectReference<T> CreateLayerReference<T>(string mapId, T layer) where T : Layer
     {

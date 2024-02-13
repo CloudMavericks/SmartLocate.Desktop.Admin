@@ -99,6 +99,22 @@ public class Map
 
         _layers.Add(layer);
     }
+    
+    /// <summary>
+    /// Creates a routing control based on Leaflet Routing Machine using the given waypoints.
+    /// </summary>
+    /// <param name="waypoints">A Collection of points that contains latitude and longitude values.</param>
+    /// <param name="allowRoutingWhileDragging">Whether to allow routing while dragging the waypoints.</param>
+    /// <returns>A <see cref="ValueTask"/> representing the asynchronous operation.</returns>
+    public ValueTask CreateRoutingControl(ICollection<LatLng> waypoints, bool allowRoutingWhileDragging = false)
+    {
+        return LeafletInterops.CreateRoutingControl(_jsRuntime, Id, waypoints, allowRoutingWhileDragging);
+    }
+    
+    public ValueTask UpdateWaypoints(ICollection<LatLng> waypoints)
+    {
+        return LeafletInterops.UpdateWaypoints(_jsRuntime, Id, waypoints);
+    }
 
     /// <summary>
     /// Remove a layer from the map.
@@ -162,14 +178,14 @@ public class Map
         }
     }
 
-    public void FitBounds(PointF corner1, PointF corner2, PointF? padding = null, float? maxZoom = null)
+    public ValueTask FitBounds(PointF corner1, PointF corner2, PointF? padding = null, float? maxZoom = null)
     {
-        LeafletInterops.FitBounds(_jsRuntime, Id, corner1, corner2, padding, maxZoom);
+        return LeafletInterops.FitBounds(_jsRuntime, Id, corner1, corner2, padding, maxZoom);
     }
 
-    public void PanTo(PointF position, bool animate = false, float duration = 0.25f, float easeLinearity = 0.25f, bool noMoveStart = false)
+    public ValueTask PanTo(PointF position, bool animate = false, float duration = 0.25f, float easeLinearity = 0.25f, bool noMoveStart = false)
     {
-        LeafletInterops.PanTo(_jsRuntime, Id, position, animate, duration, easeLinearity, noMoveStart);
+        return LeafletInterops.PanTo(_jsRuntime, Id, position, animate, duration, easeLinearity, noMoveStart);
     }
 
     public async Task<LatLng> GetCenter() => await LeafletInterops.GetCenter(_jsRuntime, Id);

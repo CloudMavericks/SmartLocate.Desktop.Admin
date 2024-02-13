@@ -1,5 +1,6 @@
 ﻿maps = {};
 layers = {};
+routingControls = {};
 
 window.leaflet = {
     create: function (map, objectReference) {
@@ -15,6 +16,21 @@ window.leaflet = {
         connectMapEvents(leafletMap, objectReference);
         maps[map.id] = leafletMap;
         layers[map.id] = [];
+    },
+    createRoutingControl: function(mapId, positions, allowRoutingWhileDragging) {
+        const routingControl = L.Routing.control({
+            waypoints: positions,
+            routeWhileDragging: allowRoutingWhileDragging,
+            serviceUrl: 'https://osrm.maverick-apps.com/route/v1',
+            addWaypoints: false
+        }).addTo(maps[mapId]);
+        routingControl.hide();
+        routingControls[mapId] = routingControl;
+    }, 
+    updateWaypoints: function(mapId, positions) {
+        //const waypoints = positions.map(p => L.latLng(p.x, p.y));
+        const routingControl = routingControls[mapId];
+        routingControl.setWaypoints(positions);
     },
     addTileLayer: function (mapId, tileLayer, objectReference) {
         const layer = L.tileLayer(tileLayer.urlTemplate, {
